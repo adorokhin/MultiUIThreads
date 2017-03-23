@@ -20,7 +20,7 @@ namespace MultiUIThread
             try
             {
                 var tasks = new List<Task>();
-                for (int i = 1; i < 10; i++)
+                for (int i = 1; i < 5; i++)
                 {
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
