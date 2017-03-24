@@ -10,8 +10,13 @@ namespace MultiUIThread
 {
     public partial class Parent_Form : Form
     {
+
+        int batch = 0;
+        CancellationTokenSource cancelSource;
+
         public Parent_Form()
         {
+            cancelSource = new CancellationTokenSource();
             InitializeComponent();
         }
 
@@ -19,30 +24,60 @@ namespace MultiUIThread
         {
             try
             {
+                if(cancelSource.IsCancellationRequested)
+                    cancelSource = new CancellationTokenSource();
+
+                var token = cancelSource.Token;
+                
+                buttonKillThemAll.Enabled = true;
+                batch++;
+
                 var tasks = new List<Task>();
-                for (int i = 1; i < 5; i++)
+                int i;
+                for (i = 1; i < 5; i++)
                 {
+                    int jj = i;
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
                         Child_Form w = new Child_Form();
                         w.Show();
-                        System.Func<Color> fc = (() =>
+
+                        Func<Color> fc = (() =>
                         {
-                            Random randomGen = new Random();
+                            Random randomGen = new Random(jj);
                             KnownColor[] names = (KnownColor[])Enum.GetValues(typeof(KnownColor));
                             KnownColor randomColorName = names[randomGen.Next(names.Length)];
                             return Color.FromKnownColor(randomColorName);
                         });
                         w.BackColor = (fc.Invoke());
+
+                        const int CYCLES = 100;
+                        w.Shown += (s1, e1) =>
+                        {
+                            var t = Task.Factory.StartNew(() =>
+                            {
+                                for (int ii = 0; ii < CYCLES; ii++)
+                                {
+                                    if (token.IsCancellationRequested)
+                                        break;
+                                    w.labelBatch.SetProperty2(() => w.labelBatch.Text, $"{batch}");
+                                    w.labelTask.SetProperty2(() => w.labelBatch.Text, $"{jj}");
+                                    w.labelCycle.SetProperty2(() => w.labelBatch.Text, $"{(ii+1)}/{CYCLES}");
+                                    Thread.Sleep(1000);
+                                }
+                                w.Invoke((MethodInvoker)(()=>{w.Close();}));
+                            });
+                        };
+
                         w.Closed += (sender2, e2) => Dispatcher.CurrentDispatcher.InvokeShutdown();
-                        Dispatcher.Run();
+                        //Dispatcher.Run();
                     }
-                        , CancellationToken.None
-                        , TaskCreationOptions.None
-                        , TaskScheduler.FromCurrentSynchronizationContext()
+                    , token   //, CancellationToken.None
+                    , TaskCreationOptions.None
+                    , TaskScheduler.FromCurrentSynchronizationContext()
                     ));
                 }
-                Task.WaitAll(tasks.ToArray());
+                //Task.WaitAll(tasks.ToArray());
             }
             catch (AggregateException ex)
             {
@@ -51,6 +86,12 @@ namespace MultiUIThread
                     throw ex.InnerException;
                 }
             }
+        }
+
+        private void buttonKillThemAll_Click(object sender, EventArgs e)
+        {
+            cancelSource.Cancel(); // Safely cancel worker.
+            buttonKillThemAll.Enabled = false;
         }
     }
 }
