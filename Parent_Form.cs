@@ -11,7 +11,7 @@ namespace MultiUIThread
     public partial class Parent_Form : Form
     {
 
-        int batch = 0;
+        [ThreadStatic] static int batch = 0;
         CancellationTokenSource cancelSource;
 
         public Parent_Form()
@@ -37,8 +37,10 @@ namespace MultiUIThread
                 for (i = 1; i < 5; i++)
                 {
                     int jj = i;
+                    
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
+                        int localBatchNo = batch;
                         Child_Form w = new Child_Form();
                         w.Show();
 
@@ -60,7 +62,7 @@ namespace MultiUIThread
                                 {
                                     if (token.IsCancellationRequested)
                                         break;
-                                    w.labelBatch.SetProperty2(() => w.labelBatch.Text, $"{batch}");
+                                    w.labelBatch.SetProperty2(() => w.labelBatch.Text, $"{localBatchNo}");
                                     w.labelTask.SetProperty2(() => w.labelBatch.Text, $"{jj}");
                                     w.labelCycle.SetProperty2(() => w.labelBatch.Text, $"{(ii+1)}/{CYCLES}");
                                     Thread.Sleep(1000);
