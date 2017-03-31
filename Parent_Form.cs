@@ -43,6 +43,7 @@ namespace MultiUIThread
                         int localBatchNo = batch;
                         Child_Form w = new Child_Form();
                         w.Show();
+                        w.Location = new Point(jj * w.Width + 20, localBatchNo * w.Height + 20);
 
                         Func<Color> fc = (() =>
                         {
@@ -92,6 +93,7 @@ namespace MultiUIThread
 
         private void buttonKillThemAll_Click(object sender, EventArgs e)
         {
+            batch=0;
             cancelSource.Cancel(); // Safely cancel worker.
             buttonKillThemAll.Enabled = false;
         }
