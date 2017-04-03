@@ -5,14 +5,17 @@ using System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using System.Drawing;
+using System.Diagnostics;
 
 namespace MultiUIThread
 {
     public partial class Parent_Form : Form
     {
+        const int CYCLES = 10;
 
         [ThreadStatic] static int batch = 0;
         CancellationTokenSource cancelSource;
+        List<Task> tasks = new List<Task>();
 
         public Parent_Form()
         {
@@ -32,32 +35,31 @@ namespace MultiUIThread
                 buttonKillThemAll.Enabled = true;
                 batch++;
 
-                var tasks = new List<Task>();
                 int i;
-                for (i = 1; i < 5; i++)
+                for (i = 1; i <= 5; i++)
                 {
                     int jj = i;
                     
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
+                        Debug.WriteLine($"<Window Task> {Task.CurrentId} started.");
                         int localBatchNo = batch;
                         Child_Form w = new Child_Form();
                         w.Show();
+                        w.Location = new Point(jj * w.Width + 20, localBatchNo * w.Height + 20);
 
-                        Func<Color> fc = (() =>
-                        {
+                        w.BackColor = (new Func<Color>(() => {
                             Random randomGen = new Random(jj);
                             KnownColor[] names = (KnownColor[])Enum.GetValues(typeof(KnownColor));
                             KnownColor randomColorName = names[randomGen.Next(names.Length)];
                             return Color.FromKnownColor(randomColorName);
-                        });
-                        w.BackColor = (fc.Invoke());
+                        })).Invoke();
 
-                        const int CYCLES = 100;
                         w.Shown += (s1, e1) =>
                         {
                             var t = Task.Factory.StartNew(() =>
                             {
+                                Debug.WriteLine($"<Batch Task> {Task.CurrentId} started.");
                                 for (int ii = 0; ii < CYCLES; ii++)
                                 {
                                     if (token.IsCancellationRequested)
@@ -67,8 +69,8 @@ namespace MultiUIThread
                                     w.labelCycle.SetProperty2(() => w.labelBatch.Text, $"{(ii+1)}/{CYCLES}");
                                     Thread.Sleep(1000);
                                 }
-                                w.Invoke((MethodInvoker)(()=>{ try { w.Close(); } catch (Exception) { } }));
-                            });
+                                w.Invoke((MethodInvoker)(()=>{ try { w.Close(); } catch (Exception) { }}));
+                            }).ContinueWith((tt) => { Debug.WriteLine($"<Batch Task> {tt.Id} being continued with absolutely nothing."); });
                         };
 
                         w.Closed += (sender2, e2) => Dispatcher.CurrentDispatcher.InvokeShutdown();
@@ -77,9 +79,17 @@ namespace MultiUIThread
                     , token   //, CancellationToken.None
                     , TaskCreationOptions.None
                     , TaskScheduler.FromCurrentSynchronizationContext()
-                    ));
+                    )
+                    .ContinueWith((t) => {
+                        Debug.WriteLine($"<Window Task> {t.Id} being continued with absolutely nothing.");
+                        tasks.Remove(t);
+                    }));
                 }
+                
                 //Task.WaitAll(tasks.ToArray());
+
+                //while(tasks.Count > 0)
+                //    tasks.Remove(tasks[Task.WaitAny(tasks.ToArray())]);
             }
             catch (AggregateException ex)
             {
@@ -92,6 +102,7 @@ namespace MultiUIThread
 
         private void buttonKillThemAll_Click(object sender, EventArgs e)
         {
+            batch=0;
             cancelSource.Cancel(); // Safely cancel worker.
             buttonKillThemAll.Enabled = false;
         }
