@@ -43,6 +43,10 @@ namespace MultiUIThread
                     tasks.Add(Task.Factory.StartNew(() =>
                     {
                         Debug.WriteLine($"<Window Task> {Task.CurrentId} started.");
+
+                        //if(Debugger.IsAttached)
+                        //    Debugger.Break();
+
                         int localBatchNo = batch;
                         Child_Form w = new Child_Form();
                         w.Show();

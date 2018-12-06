@@ -62,6 +62,7 @@
             this.Controls.Add(this.buttonSpawn);
             this.Name = "Parent_Form";
             this.Text = "Parent";
+            this.TopMost = true;
             this.ResumeLayout(false);
 
         }
