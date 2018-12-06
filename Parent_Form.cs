@@ -73,7 +73,7 @@ namespace MultiUIThread
                                     w.labelCycle.SetProperty2(() => w.labelBatch.Text, $"{(ii+1)}/{CYCLES}");
                                     Thread.Sleep(1000);
                                 }
-                                w.Invoke((MethodInvoker)(()=>{w.Close();}));
+                                w.Invoke((MethodInvoker)(()=>{ try { w.Close(); } catch (Exception) { }}));
                             }).ContinueWith((tt) => { Debug.WriteLine($"<Batch Task> {tt.Id} being continued with absolutely nothing."); });
                         };
 
